@@ -1,0 +1,29 @@
+# Datos reales del hospital: nunca al historial.
+# Se versiona solo la documentación de la carpeta y los ejemplos anonimizados.
+datos/*
+!datos/LEEME.md
+!datos/ejemplos/
+datos/ejemplos/*
+!datos/ejemplos/.gitkeep
+!datos/ejemplos/*.md
+
+# Generados
+datos/intermedio/
+datos/salida/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Secretos
+.env
+.env.*
+!.env.example
+
+# Sistema
+.DS_Store
+Thumbs.db
+~$*.xlsx
