@@ -122,3 +122,94 @@ NFR-006 y NFR-009 no tenían fase asignada—, y ese error queda escrito dentro 
 **Pendiente:** aprobación del usuario. Nueve `[PENDIENTE]` de dominio abiertos en
 `memoria.md`; ninguno bloquea las fases 1 y 2. El usuario aportará el catálogo de ofertas y
 el informe de compras en `datos/entrada/`.
+
+## 2026-09-03 · Sesión 2 · PRD v1.1: validación con cuatro aclaraciones de dominio
+
+**Hecho:** el usuario aprobó el PRD v1.0 ("con estos cambios valido el PRD") aportando en el
+mismo turno cuatro aclaraciones de dominio, procesadas por el modo CAMBIO de `forja-prd`.
+Actualizado `PRD.md` a v1.1 (estado: aprobado), con entrada en el Anexo · Registro de
+cambios por cada una. Compactadas las decisiones vigentes y los bloqueos en `memoria.md`.
+
+**Decidido:**
+
+- **M2 se mide contrastando el histórico digital de reposiciones con la hoja de reposición
+  en papel** que el técnico anota a mano al hacer el pedido (círculos, tachones, cantidades
+  corregidas). No es un campo estructurado: es un trabajo manual de quien coordina el
+  piloto. El usuario adjuntó una foto real —dispensador ATHOS 3, LEVETIRACETAM 500 mg comp
+  (`V15084`), cantidad propuesta 78, nota a mano "BASE J 2S3S pequeño para tantos
+  comprimidos"— que sirve a la vez de evidencia de M1 fallando por capacidad de hueco.
+  Consecuencia añadida al PRD: la lectura automática (OCR) de esa hoja queda explícitamente
+  **fuera de alcance**, para que la foto no se lea como pie a construirlo.
+- **Los medicamentos extranjeros (`T`) sí tienen código de oferta** (no es CN nacional
+  registrado, pero cumple la misma función de clave en `OFERTAS`) **y sí pueden
+  reenvasarse**. Cierra los dos últimos `[PENDIENTE]` de la tabla de prefijos de §6.
+- **El reenvasado sí cambia con el proveedor** —una rotura de stock puede forzar el cambio—,
+  lo que confirma indexar `REENVASADOS` por CN y no por código BDM: ya no es una
+  simplificación pendiente de validar.
+- **El hospital opera dos centros, HUNSC y "Sur".** El usuario dictó la lista de columnas
+  reales de un fichero que llama "inventario de compras": unidades pendientes de recibir,
+  existencias por ubicación (almacén, UFA, Kardex, carrusel horizontal/vertical) y consumo,
+  cada uno con variante por centro y variante agregada. **Resuelve REQ-090** (de dónde sale
+  el consumo global del artículo): la columna `consumed_ad00`, consumo del artículo en todas
+  las máquinas ATHOS de HUNSC. Queda `[PENDIENTE]` qué fichero es exactamente este —puede ser
+  el "informe de compras" ya previsto en el PRD o uno distinto— y qué columnas `EXIST*` usa
+  el piloto; se resuelve al ver el fichero en fase 4.
+
+**Desviaciones del PRD:** ninguna — es precisamente el mecanismo de control de cambios que
+el PRD preveía para esto (modo CAMBIO).
+
+**Pendiente:** el usuario aún no ha dejado ningún fichero real en `datos/entrada/`. La fase 1
+(esqueleto + guarda de datos de paciente) no los necesita y puede arrancar ya. Quedan siete
+`[PENDIENTE]` de dominio en `memoria.md`, ninguno bloqueante para la fase 1.
+
+## 2026-09-03 · Sesión 3 · Llegan los dos primeros ficheros reales; análisis manual de columnas
+
+**Hecho:** el usuario aportó `ofertas_farmatools.xls` (9.215 filas, 34 columnas) y
+`stock_21_agos.xls` (2.914 filas, 26 columnas), pidiendo identificar qué es cada variable.
+No hay lector construido todavía (fase 1 no ha arrancado), así que el análisis fue manual:
+copia local de los `.xls` (formato OLE2/BIFF genuino, `xlrd` de pandas no pudo parsearlos
+—"OLE2 inconsistency"—, así que se convirtieron con LibreOffice headless a `.xlsx` para
+inspeccionarlos con `openpyxl`), inspección de cabeceras con cribado de indicadores de
+paciente (regla dura 4/M1), y verificación cruzada de columnas sobre el dataset completo,
+no solo una muestra. Copiados los originales `.xls`, intactos, a `datos/entrada/ofertas/` y
+`datos/entrada/compras/` (esta segunda ubicación, provisional). Los ficheros temporales de
+trabajo (copia local y conversión) se borraron al terminar.
+
+**Decidido:** ninguna decisión de modelo todavía — todo lo que salió del análisis quedó
+como `[PENDIENTE]` en `memoria.md` en vez de asumirse, porque hay demasiadas lecturas
+plausibles para cada campo ambiguo. Resumen de lo encontrado:
+
+- **Ninguno de los dos ficheros es el inventario por dispensador** que necesita la fase 2:
+  son catálogo/stock a nivel de hospital (unas 20 ubicaciones: almacén, UFA, Kardex,
+  carruseles, oncología, curas, estupefacientes…), no por armario ATHOS. Puede que ese dato
+  solo exista en el software de APD y no tenga extracción digital — coherente con que la
+  evidencia de M2 sea la hoja de reposición en papel.
+- **`stock_21_agos.xls` trae exactamente las columnas de dos centros** que el usuario había
+  dictado el 03/09/2026 (`ud_pte_rec*`, `EXIST1..68`, `consumed*`, `ubica`), pero no encaja
+  del todo con el "informe de compras" que define REQ-027 (fija la oferta vigente): no tiene
+  columna de oferta vigente. Podría ser una tercera entidad del modelo.
+- **`existencia` y `consumed` no son la suma de sus columnas desglosadas** (67,6 % y 50,7 %
+  de las filas cuadran respectivamente, comprobado sobre las 2.914 filas completas, no una
+  muestra) — hay ubicaciones y canales de consumo no cubiertos por las columnas con nombre.
+  `ud_pte_rec = ud_pte_rec_1 + ud_pte_rec_18` sí cuadra al 100 % (2.913/2.914).
+- **Prefijo `EC` no contemplado en el PRD** (`V`/`Y`/`DM`/`T` son los cuatro conocidos):
+  aparece en ambos ficheros, son medicamentos de ensayos clínicos (protocolos ATHENEA,
+  GEM2017FIT, GEM21MENOS65). Por REQ-026 se pregunta, no se clasifica por parecido.
+- **Verificado sin datos de paciente:** las cabeceras que sonaban a alerta (`nombre`,
+  `nombre.1`, `nombre_proveedor`) son laboratorio/proveedor, no personas. Los códigos `PAC` y
+  `NOGUIA` que aparecían en el catálogo resultaron ser placeholders genéricos ("medicamento
+  que aporta paciente", "no guía farmacoterapéutica"), no identificadores de nadie.
+- Mapeos que sí quedaron razonablemente confirmados (cruce sobre el dataset completo, no
+  adivinados): `dospresen` (ofertas) y `upe` (stock) coinciden en el 89,6 % de los códigos
+  comunes → unidades por envase. `tipo` en ofertas correlaciona 1:1 con `descripcio` → parece
+  canal de adjudicación de la oferta (concurso / envase normal / envase clínico / …), no tipo
+  de artículo.
+
+**Desviaciones del PRD:** ninguna. No se ha escrito ningún lector ni tocado el modelo de
+datos de `PRD.md`: los hallazgos ambiguos se dejan como `[PENDIENTE]` hasta que el usuario
+los confirme, tal y como exige la regla de "sin respaldo, no lo sé" del proyecto.
+
+**Pendiente:** cinco preguntas nuevas de dominio en `memoria.md` (inventario por
+dispensador, encaje de `stock_21_agos` en el modelo, fiabilidad de `existencia`/`consumed`,
+prefijo `EC`, significado de `codigo_asociado` y `tipo`). Ninguna bloquea arrancar la fase 1
+(esqueleto + guarda de paciente), que sigue sin empezar.

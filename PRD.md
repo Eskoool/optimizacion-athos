@@ -1,9 +1,9 @@
 # PRD · optimizacion-athos
 
 ```
-Versión: 1.0
-Fecha: 2026-09-02
-Estado: borrador (pendiente de aprobación del usuario)
+Versión: 1.1
+Fecha: 2026-09-03
+Estado: aprobado por el usuario el 2026-09-03, con las aclaraciones de dominio del Anexo
 Motor de build: Claude Code
 Autor: Yared González Pérez
 ```
@@ -75,12 +75,26 @@ propuestas con el posterior.
 | # | Métrica | Objetivo | De dónde sale el dato |
 |---|---|---|---|
 | **M1** | Aplicabilidad física: propuestas que caben en su hueco | **100 %**, cero excepciones | Base de huecos (§7 M5). Una excepción es un fallo del motor, no del armario |
-| **M2** | Reposición ejecutada sin ajuste manual sobre lo propuesto | **≥ 90 %** de las líneas | Lo reporta quien repone al cerrar el ciclo |
+| **M2** | Reposición ejecutada sin ajuste manual sobre lo propuesto | **≥ 90 %** de las líneas | Se contrasta el histórico digital de reposiciones con la hoja de reposición que el técnico anota a mano al hacer el pedido. **Dato manual**, no lo calcula el software |
 | **M3** | Roturas de stock en las unidades piloto | **Reducción ≥ 80 %** frente al periodo previo de igual duración | Histórico de movimientos: línea en la que la cantidad hallada en el cajetín es 0 |
 | **M4** | Referencias a reponer por dispensador y visita | **Entre 8 y 10** | Calculado: `Σ CMD ÷ (máx − mín)` sobre las referencias del armario |
 
 **Los cuatro umbrales están confirmados por el usuario** (02/09/2026). M1 y M4 son objetivos
 de diseño, comprobables sobre el papel antes de aplicar nada; M2 y M3 solo se saben después.
+
+> **Cómo se mide M2 de verdad, confirmado por el usuario el 03/09/2026.** No hay un campo
+> digital que diga "se ajustó o no". La señal real vive en la hoja de reposición en papel que
+> el técnico rellena al hacer el pedido del ATHOS: círculos, tachones y cantidades corregidas
+> a mano sobre lo que proponía el sistema. M2 se obtiene comparando esa hoja con la propuesta,
+> y es un trabajo manual de quien coordina el piloto — el software no lo genera solo.
+>
+> La misma hoja sirve además de **evidencia directa de M1**: una cantidad tachada porque "no
+> cabe" es una propuesta que violó la capacidad del hueco. El usuario aportó un ejemplo real
+> —dispensador ATHOS 3, LEVETIRACETAM 500 mg comp or/sonda (`V15084`), cantidad propuesta 78,
+> anotación a mano "BASE J 2S3S pequeño para tantos comprimidos"— que es exactamente el caso
+> que cubre REQ-041/REQ-059: el hueco J de la sección 2S3S no cabe físicamente esa cantidad,
+> y el técnico lo corrige a mano porque el sistema de origen (APD) no conoce esa restricción.
+> Es la prueba de campo de por qué la base de huecos (M5) no es un accesorio.
 
 **El objetivo último de M3 es cero: que no se llegue nunca a cajetín 0.** El −80 % es el
 umbral con el que se declara que el piloto funcionó, no la meta. Por eso el informe
@@ -144,6 +158,7 @@ y porque el farmacéutico responsable habrá aceptado las propuestas sin reescri
 | Los 47 dispensadores | Contradice la decisión de validar sobre dispensadores concretos |
 | **Material y otros (`DM`)** | No se pone en el dispensador. Fuera del alcance entero, no solo del reenvasado |
 | **Sueros y grandes volúmenes** (p. ej. paracetamol intravenoso) | No van al armario |
+| **Lectura automática de la hoja de reposición en papel** (OCR de anotaciones a mano) | M2 se contrasta a mano por quien coordina el piloto (§2). Automatizarlo es un cambio de arquitectura que no se ha pedido — la hoja es evidencia de campo, no una entrada del sistema |
 
 **UFA no está aquí a propósito.** Se planteó como exclusión y el usuario lo retiró: los
 medicamentos de UFA (Unidad de Farmacia Ambulatoria) y los de onco-hematología **entran en
@@ -306,7 +321,7 @@ El **prefijo del código clasifica el artículo**, y esa clasificación es dato,
 | `V` | `V00210` | Medicamento | Sí | Si es comprimido o cápsula |
 | `Y` | `Y80879` | Fórmula magistral interna | **No**: se elabora en el servicio | `[PENDIENTE]`: no tiene CN, y la pestaña se indexa por CN |
 | `DM` | `dm000116` | Material y otros | **No** | **Fuera del piloto: no se pone en el armario** |
-| `T` | `T80502` | Medicamento extranjero | `[PENDIENTE]` | `[PENDIENTE]` |
+| `T` | `T80502` | Medicamento extranjero | **Sí** — código propio del proveedor extranjero, no un CN nacional registrado. Confirmado 03/09/2026 | **Sí**, si es comprimido o cápsula — igual que `V`. Confirmado 03/09/2026 |
 
 **Entran en el piloto `V`, `Y` y `T`.** `DM` queda fuera. Si aparece un prefijo distinto de
 esos cuatro, **se pregunta al usuario**: no se clasifica por parecido (REQ-026).
@@ -335,15 +350,15 @@ tiene una o varias**, y es cada oferta la que lleva su CN, su laboratorio y su p
        └── es lo que el inventario y los movimientos referencian
 ```
 
-> ⚠ **Consecuencia sobre el reenvasado, que conviene resolver antes de construir:** que algo
+> ⚠ **Consecuencia sobre el reenvasado, confirmada por el usuario el 03/09/2026:** que algo
 > venga ya en unidosis depende de **cómo lo envasa el laboratorio que ganó la oferta**, no
-> del principio activo. Si cambia la oferta adjudicada, el mismo artículo puede pasar de
+> del principio activo. Si cambia la oferta adjudicada —y un motivo real de cambio es una
+> rotura de stock que obliga a cambiar de proveedor— el mismo artículo puede pasar de
 > `ya_unidosis` a `se_reenvasa` sin que nadie haya tocado nada. Por eso `REENVASADOS` se
-> indexa aquí por **CN** —la presentación concreta— y por eso el informe de compras importa:
-> es lo que dice qué oferta está viva ahora mismo.
-> `[PENDIENTE: confirmarlo. Si en la práctica el reenvasado se decide por artículo y no
-> cambia al cambiar de proveedor, la clave de esa pestaña es el código BDM y esto se
-> simplifica mucho.]`
+> indexa aquí por **CN** —la presentación concreta, no el código BDM— y por eso el informe de
+> compras importa: es lo que dice qué oferta está viva ahora mismo. **Confirmado: el
+> reenvasado sí cambia con el proveedor**, así que la clave por CN es definitiva, no una
+> simplificación pendiente de validar.
 
 **Pestaña `ARTICULOS`** — una fila por código BDM
 
@@ -369,7 +384,7 @@ tiene una o varias**, y es cada oferta la que lleva su CN, su laboratorio y su p
 | Campo | Tipo | Oblig. | Notas |
 |---|---|---|---|
 | `codigo_bdm` | texto | **sí** | → `ARTICULOS.codigo_bdm` |
-| `cn` | texto | **sí** | Código nacional de esta presentación concreta |
+| `cn` | texto | **sí** | Código nacional de esta presentación, o —si el artículo es `medicamento_extranjero`— el código propio que trae el archivo de ofertas del proveedor extranjero. No es un CN registrado en España, pero cumple la misma función de clave dentro de `OFERTAS`. Confirmado 03/09/2026 |
 | `laboratorio` | texto | sí | |
 | `presentacion` | texto | sí | Tamaño de envase y formato |
 | `precio` | decimal | sí | |
@@ -393,11 +408,12 @@ anomalía.
 > **Ámbito del campo**, y ahora tiene dos condiciones, no una:
 > 1. Solo **comprimidos y cápsulas**. Para ampollas, viales e inyectables **no aplica** — no
 >    es que esté vacío pendiente de rellenar.
-> 2. Solo artículos de tipo `medicamento` (prefijo `V`) y, si procede, `medicamento_extranjero`
->    (`T`). El **material (`DM`) queda fuera por definición**: no es medicamento, no se
->    reenvasa. Las **fórmulas magistrales (`Y`)** no tienen CN, así que no pueden indexarse
->    aquí — `[PENDIENTE: ¿se reenvasan las fórmulas? Si sí, esta pestaña necesita aceptar
->    también el código BDM como clave alternativa.]`
+> 2. Solo artículos de tipo `medicamento` (prefijo `V`) **y también** `medicamento_extranjero`
+>    (`T`) — confirmado 03/09/2026: los extranjeros sí pueden reenvasarse. El **material
+>    (`DM`) queda fuera por definición**: no es medicamento, no se reenvasa. Las **fórmulas
+>    magistrales (`Y`)** no tienen CN, así que no pueden indexarse aquí — `[PENDIENTE: ¿se
+>    reenvasan las fórmulas? Si sí, esta pestaña necesita aceptar también el código BDM como
+>    clave alternativa.]`
 >
 > El validador no exige el campo fuera de ese ámbito y la estadística no cuenta esos
 > artículos como sin clasificar (REQ-031).
@@ -485,6 +501,45 @@ Una propuesta no verificada no cuenta para las métricas de §2.
 
 Los campos exactos de `ofertas` y `compras` se fijan al ver los dos ficheros que el usuario
 va a aportar. Lo que **no** está pendiente es la relación entre ellos.
+
+> **Campos reales de un fichero de inventario/compras, aportados por el usuario el
+> 03/09/2026**, registrados aquí para que la fase 4 no los redescubra. El servicio opera
+> **dos centros** —HUNSC y "Sur"— y varias columnas de este fichero son la suma de ambos; el
+> PRD, hasta ahora, solo hablaba de HUNSC. **Esto no cambia el alcance del piloto** (§3: sigue
+> validándose solo sobre unidades de HUNSC), pero sí exige leer las columnas por centro y no
+> las agregadas:
+>
+> | Columna | Significado |
+> |---|---|
+> | `ud_pte_rec` | Unidades pendientes de recibir, HUNSC + Sur |
+> | `ud_pte_rec_1` | Unidades pendientes de recibir, solo HUNSC |
+> | `ud_pte_rec_18` | Unidades pendientes de recibir, solo Sur |
+> | `consumed` | Consumo medio, HUNSC + Sur |
+> | `consumed_9000` | Consumo de farmacia, HUNSC |
+> | `consumed_ad00` | **Consumo de todas las máquinas carrusel ATHOS en HUNSC** — señalado por el usuario como el dato importante |
+> | `consumed_9001` | Consumo de farmacia, Sur |
+> | `consumed_ad01` | Consumo de máquinas, Sur |
+> | `EXIST1` | Existencias, almacén de farmacia HUNSC |
+> | `EXIST2` | Existencias, robot UFA |
+> | `EXIST18` | Existencias, almacén de farmacia Sur |
+> | `EXIST50` | Existencias, UFA Sur |
+> | `EXIST58` / `EXIST59` | Existencias, Kardex 1 / Kardex 2 |
+> | `exist60` / `exist61` | Existencias, carrusel vertical / carrusel horizontal |
+> | `exist68` | Existencias, carrusel Sur |
+> | `ubica` | Ubicación principal del medicamento |
+>
+> **Esto resuelve REQ-090** (de dónde sale el consumo global del artículo, antes
+> `[PENDIENTE]`): `consumed_ad00` es exactamente ese dato — el consumo del artículo en todas
+> las máquinas ATHOS de HUNSC, no solo en el dispensador piloto.
+>
+> `[PENDIENTE, dos cosas antes de la fase 4]`:
+> 1. **Qué fichero es exactamente este.** El usuario lo llamó "inventario de compras"; puede
+>    ser el `informe de compras` ya previsto (el que fija la oferta vigente, REQ-027) o un
+>    fichero distinto. Se confirma al ver el fichero real, no antes.
+> 2. **Qué columnas usa el piloto.** Con dos centros en el mismo fichero, hay que decidir de
+>    forma explícita si `existencias_globales` de `ARTICULOS` suma todas las columnas
+>    `EXIST*` de HUNSC o solo un subconjunto (p. ej. si Kardex no aplica a los dispensadores
+>    piloto). No se decide por parecido: se pregunta al ver el fichero.
 
 ### Reglas de borrado y ciclo de vida por entidad
 
@@ -1009,15 +1064,18 @@ Cubre REQ-080, REQ-081, REQ-082, REQ-090, REQ-091.
   > una tabla.
 
 - **REQ-082** `[Should]` — *Evento.* CUANDO se cierra el piloto, el sistema DEBERÁ generar
-  un informe con las cuatro métricas de §2 y su grado de cumplimiento.
+  un informe con las métricas que puede calcular de §2 —**M1, M3 y M4**, del histórico
+  digital— y DEBERÁ dejar una casilla para introducir **M2 a mano**, porque esa métrica sale
+  de contrastar la hoja de reposición en papel con lo propuesto, no de ningún fichero
+  digital (§2).
 
 - **REQ-090** `[Should]` — *Ubicuo.* El sistema DEBERÁ comparar el consumo medio de cada
   medicamento en el dispensador con su consumo global, y señalar las desviaciones
   relevantes.
-  > `[PENDIENTE: de dónde sale el consumo global del artículo. No está en la lista de
-  > extracciones acordada. O se añade una extracción, o el maestro lo acumula sumando
-  > dispensadores —que no es lo mismo que el consumo del hospital—. Decidir antes de la
-  > fase 9.]`
+  > **Resuelto el 03/09/2026** (§6, nota sobre el fichero de inventario/compras): el consumo
+  > global sale de la columna `consumed_ad00` — consumo del artículo en todas las máquinas
+  > carrusel ATHOS de HUNSC. Queda `[PENDIENTE]` confirmar el nombre exacto del fichero que
+  > la trae, al verlo en fase 4.
 
 - **REQ-091** `[Could]` — *Ubicuo.* El sistema DEBERÁ calcular el importe inmovilizado por
   dispensador con los mín/máx vigentes y con los propuestos, usando el precio de la oferta
@@ -1409,4 +1467,7 @@ fichero.
 
 | Fecha | Cambio | Motivo | Secciones tocadas | Decisión |
 |---|---|---|---|---|
-| — | — | — | — | *(nace vacía; se llena desde el modo CAMBIO)* |
+| 2026-09-03 | M2 se mide contrastando el histórico digital con la hoja de reposición en papel anotada a mano por el técnico, no con un campo estructurado | El usuario aportó el mecanismo real, con foto de una hoja real (dispensador ATHOS 3, LEVETIRACETAM `V15084` como ejemplo de M1 fallando por capacidad) | §2, REQ-082, §3 (fuera de alcance) | Incorporado. Se añade explícitamente que la OCR de la hoja NO entra en el piloto |
+| 2026-09-03 | Los extranjeros (`T`) sí tienen código de oferta (no CN nacional) y sí pueden reenvasarse | El usuario lo confirmó; resuelve los dos `[PENDIENTE]` de la fila `T` en §6 | §6 (tabla de prefijos, `OFERTAS.cn`, ámbito de `REENVASADOS`) | Incorporado |
+| 2026-09-03 | El reenvasado sí cambia con el proveedor (una rotura de stock puede forzar el cambio); confirma indexar `REENVASADOS` por CN | El usuario lo confirmó; resuelve el `[PENDIENTE]` de si la clave podía simplificarse al código BDM | §6 (nota "Consecuencia sobre el reenvasado") | Incorporado. Ya no es una simplificación pendiente |
+| 2026-09-03 | El hospital opera dos centros (HUNSC y Sur); se registran los campos reales de un fichero de inventario/compras con columnas por centro y agregadas. `consumed_ad00` resuelve el origen del consumo global (REQ-090) | El usuario aportó la lista de campos de un fichero real | §6 (tablas en memoria), REQ-090 | Incorporado parcialmente: los campos quedan documentados, pero **qué fichero es exactamente** y **qué columnas usa el piloto** (todas las `EXIST*` de HUNSC o un subconjunto) quedan `[PENDIENTE]` hasta ver el fichero real en fase 4 |
