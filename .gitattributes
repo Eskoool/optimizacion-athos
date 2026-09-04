@@ -1,0 +1,12 @@
+# Finales de línea: LF en el árbol de trabajo, en cualquier máquina.
+#
+# Mismo arreglo que el repo del wiki (ver su .gitattributes, 2026-09-03). El gitconfig del
+# sistema en Windows trae core.autocrlf=true, y .git/config NO VIAJA con el repo: sin esto,
+# cualquier clon en otra máquina sale con los ficheros marcados como modificados sin que
+# haya cambiado una sola línea, y bin/guardar.sh reporta "árbol sucio" para siempre.
+# Detectado el 2026-09-04 al restaurar el repo tras la migración a R:.
+* text=auto eol=lf
+
+# Los scripts se ejecutan con bash: CRLF los rompe de verdad
+# ("bad interpreter: /usr/bin/env bash^M").
+*.sh text eol=lf
